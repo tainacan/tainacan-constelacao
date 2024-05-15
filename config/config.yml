@@ -1,0 +1,7 @@
+airflow_user:
+  role: Admin
+  login: Admin
+  first_name: Admin
+  last_name: Admin
+  email: Admin@admin.com.br
+  passwd_env_var: 12345

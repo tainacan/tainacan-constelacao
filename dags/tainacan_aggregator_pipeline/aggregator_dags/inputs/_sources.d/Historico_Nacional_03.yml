@@ -1,0 +1,103 @@
+- type: httpjson
+  http_method: GET
+  interval: 3600s
+  url: https://mhn.acervos.museus.gov.br/wp-json/tainacan/v2/collection/627609/items/?perpage=96&order=ASC&orderby=date&exposer=json-flat&mapper=inbcm-ibram&paged=1
+  json_objects_array: "items"
+  pagination:
+    enabled: true
+    extra_body_content:
+      perpage: 50
+    id_field: pagination.next_page
+    req_field: paged
+    url: https://mhn.acervos.museus.gov.br/wp-json/tainacan/v2/collection/627609/items/?perpage=96&order=ASC&orderby=date&exposer=json-flat&mapper=inbcm-ibram&paged=1
+  processors:
+    - decode_json_fields:
+        fields: [message]
+        target: json
+    - convert:
+        mode: "rename"
+        fields:
+          - { from: "json.id", to: "payload.id" }
+          - { from: "json.data.titulo.value", to: "payload.titulo" }
+          - {
+              from: "json.data.numero-registro.value",
+              to: "payload.numero-registro",
+            }
+          - {
+              from: "json.data.local-producao.value",
+              to: "payload.local-producao",
+            }
+          - {
+              from: "json.data.outros-numeros.value",
+              to: "payload.outros-numeros",
+            }
+          - { from: "json.data.situacao.value", to: "payload.situacao" }
+          - { from: "json.data.denominacao.value", to: "payload.denominacao" }
+          - { from: "json.data.autor.value", to: "payload.autor" }
+          - {
+              from: "json.data.classificacao.value",
+              to: "payload.classificacao",
+            }
+          - {
+              from: "json.data.resumo-descritivo.value",
+              to: "payload.resumo-descritivo",
+            }
+          - { from: "json.data.dimensoes.value", to: "payload.dimensoes" }
+          - {
+              from: "json.data.dimensoes-altura.value",
+              to: "payload.dimensoes-altura",
+            }
+          - {
+              from: "json.data.dimensoes-largura.value",
+              to: "payload.dimensoes-largura",
+            }
+          - {
+              from: "json.data.dimensoes-peso.value",
+              to: "payload.dimensoes-peso",
+            }
+          - {
+              from: "json.data.dimensoes-profundidade-comprimento.value",
+              to: "payload.dimensoes-profundidade-comprimento",
+            }
+          - {
+              from: "json.data.dimensoes-espessura.value",
+              to: "payload.dimensoes-espessura",
+            }
+          - {
+              from: "json.data.dimensoes-diametro.value",
+              to: "payload.dimensoes-diametro",
+            }
+          - {
+              from: "json.data.material-tecnica.value",
+              to: "payload.material-tecnica",
+            }
+          - {
+              from: "json.data.estado-conservacao.value",
+              to: "payload.estado-conservacao",
+            }
+          - {
+              from: "json.data.data-producao.value",
+              to: "payload.data-producao",
+            }
+          - {
+              from: "json.data.condicoes-reproducao.value",
+              to: "payload.condicoes-reproducao",
+            }
+          - {
+              from: "json.data.midias-relacionadas.value",
+              to: "payload.midias-relacionadas",
+            }
+          - { from: "json.url", to: "payload.url" }
+          - { from: "json.thumbnail", to: "payload.thumbnail" }
+          - { from: "json.document", to: "payload.document" }
+        ignore_missing: true
+        fail_on_error: false
+    - drop_fields:
+        fields: ["message", "json"]
+    - add_fields:
+        target: payload
+        fields:
+          museu: "Museu Histórico Nacional"
+          colecao: "Acervo Museológico"
+          cidade: "Rio de Janeiro"
+          uf: "RJ"

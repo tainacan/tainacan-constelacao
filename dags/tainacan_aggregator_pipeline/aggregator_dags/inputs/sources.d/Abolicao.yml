@@ -1,0 +1,75 @@
+idsource: mabolicao_01
+url: https://museudaabolicao.acervos.museus.gov.br/wp-json/tainacan/v2/collection/7/items/
+url_parameters:
+  order: DESC
+  orderby: date
+  exposer: json-flat
+  mapper: inbcm-ibram
+pagination:
+  request:
+    pagesize: 50
+    field_pagesize: perpage
+    field_page: paged
+  response:
+    path_to_next_page: pagination.next_page
+    path_to_items: items
+
+transform:
+  rename:
+    fields:
+      - { from: "id", to: "payload.id", use_as_id: true }
+      - { from: "data.titulo.value", to: "payload.titulo" }
+      - { from: "data.numero-registro.value", to: "payload.numero-registro" }
+      - { from: "data.local-producao.value", to: "payload.local-producao" }
+      - { from: "data.outros-numeros.value", to: "payload.outros-numeros" }
+      - { from: "data.situacao.value", to: "payload.situacao" }
+      - { from: "data.denominacao.value", to: "payload.denominacao" }
+      - { from: "data.autor.value", to: "payload.autor" }
+      - { from: "data.classificacao.value", to: "payload.classificacao" }
+      - {
+          from: "data.resumo-descritivo.value",
+          to: "payload.resumo-descritivo",
+        }
+      - { from: "data.dimensoes.value", to: "payload.dimensoes" }
+      - { from: "data.dimensoes-altura.value", to: "payload.dimensoes-altura" }
+      - {
+          from: "data.dimensoes-largura.value",
+          to: "payload.dimensoes-largura",
+        }
+      - { from: "data.dimensoes-peso.value", to: "payload.dimensoes-peso" }
+      - {
+          from: "data.dimensoes-profundidade-comprimento.value",
+          to: "payload.dimensoes-profundidade-comprimento",
+        }
+      - {
+          from: "data.dimensoes-espessura.value",
+          to: "payload.dimensoes-espessura",
+        }
+      - {
+          from: "data.dimensoes-diametro.value",
+          to: "payload.dimensoes-diametro",
+        }
+      - { from: "data.material-tecnica.value", to: "payload.material-tecnica" }
+      - {
+          from: "data.estado-conservacao.value",
+          to: "payload.estado-conservacao",
+        }
+      - { from: "data.data-producao.value", to: "payload.data-producao" }
+      - {
+          from: "data.condicoes-reproducao.value",
+          to: "payload.condicoes-reproducao",
+        }
+      - {
+          from: "data.midias-relacionadas.value",
+          to: "payload.midias-relacionadas",
+        }
+      - { from: "url", to: "payload.url" }
+      - { from: "thumbnail", to: "payload.thumbnail" }
+      - { from: "document", to: "payload.document" }
+  add_fields:
+    target: payload
+    fields:
+      museu: "Museu da Abolição"
+      colecao: "Acervo Museológico"
+      cidade: "Recife"
+      uf: "PE"

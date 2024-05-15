@@ -1,0 +1,4 @@
+pymongo==3.8.0
+apache-airflow-providers-mongo==2.3.1
+soql==1.0.2
+text-unidecode==1.3

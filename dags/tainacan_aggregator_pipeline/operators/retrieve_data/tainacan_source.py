@@ -103,13 +103,15 @@ def fn_add_fields(data, transform):
 
 class TainacanSourceOperator(BaseOperator):
 
-    template_fields = ["source_config",]
+    template_fields = ["source_config", "mongo_conn_id", ]
 
-    def __init__(self, source_config, **kwargs):
+    def __init__(self, source_config, mongo_conn_id, **kwargs):
 
         self.source_config = source_config
         self.conn_id = None
-        self.mongo_hook = MongoHook(conn_id='mongo_cache_db')
+        self.mongo_conn_id = mongo_conn_id
+        self.mongo_db = mongo_conn_id
+        self.mongo_hook = MongoHook(conn_id=mongo_conn_id)
 
         if 'url' in self.source_config and 'idsource' in self.source_config:
             url = self.source_config['url']
@@ -131,7 +133,7 @@ class TainacanSourceOperator(BaseOperator):
 
         idsource = self.source_config['idsource']
         self.mongo_hook.replace_many(
-            mongo_collection=idsource, docs=data_transform, mongo_db='agregation_cache_db', upsert=True)
+            mongo_collection=idsource, docs=data_transform, mongo_db=self.mongo_db, upsert=True)
         logging.info(data_transform)
 
     def execute(self, context):

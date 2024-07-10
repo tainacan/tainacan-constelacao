@@ -43,11 +43,48 @@ pipe:
     capitalize:
       - "classificacao"
     add_hash:
-      target: "hash"
-      method: "md5"
+      - target: "fingerprint"
+        method: "md5"
+        fields:
+          id: null
+          museu: null
+          "numero-registro": null
+      - target: "hash-content"
+        method: "md5"
+        fields:
+          "id": null
+          "resumo-descritivo": null
+          "titulo": null
+          "numero-registro": null
+          "outros-numeros": null
+          "situacao": null
+          "denominacao": null
+          "autor": null
+          "dimensoes": null
+          "dimensoes-altura": null
+          "classificacao": null
+          "dimensoes-largura": null
+          "dimensoes-espessura": null
+          "dimensoes-profundidade-comprimento": null
+          "dimensoes-diametro": null
+          "dimensoes-peso": null
+          "material-tecnica": null
+          "data-producao": null
+          "local-producao": null
+          "estado-conservacao": null
+          "condicoes-reproducao": null
+          "midias-relacionadas": null
+          "museu": null
+          "url": null
+          "colecao": null
+          "cidade": null
+          "uf": null
   target_collection:
     connection_name: "brasiliana.local"
     collection_id: "5"
+    metadata_identifier: "35" # metadado no agregador que guarda o identificador unico dos itens no processe de agregação
+    metadata_hash_content: "4991391"
+    ignore_items_without_identifier: true # ignorar o item caso não tenha o metadado identificador
     metadata:
       "37": "id"
       "7": "resumo-descritivo"
@@ -77,5 +114,6 @@ pipe:
       "32221": "colecao"
       "32413": "cidade"
       "32417": "uf"
+      "4991391": "hash-content"
       "_thumbnail": "thumbnail"
       "_document": "document"

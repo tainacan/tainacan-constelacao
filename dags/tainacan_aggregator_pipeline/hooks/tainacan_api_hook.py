@@ -13,10 +13,10 @@ class TainacanAPIHook(HttpHook):
 
     def __init__(self, conn_id=None, *args, **kwargs):
         self.conn_id = conn_id
-        # self.headers = {}
-        # self.init_headers()
         super().__init__(http_conn_id=self.conn_id, *args, **kwargs)
         self.conn = self.get_connection(conn_id)
+        self.headers = {}
+        self.init_headers()
 
     def init_headers(self):
         connection = Connection.get_connection_from_secrets(self.conn_id)
@@ -25,7 +25,8 @@ class TainacanAPIHook(HttpHook):
         authorization = "Basic " + \
             base64.b64encode(f"{api_app_user}:{api_app_pass}".encode(
                 'utf-8')).decode('utf-8')
-        # self.headers['Authorization'] = authorization
+        self.headers['Authorization'] = authorization
+        self.headers['Content-Type'] = 'application/json'
 
     # def connect_to_endpoint(self, url, session, page):
     #     request = requests.Request(
@@ -60,42 +61,45 @@ class TainacanAPIHook(HttpHook):
         return
 
     def get_collection_items(self, collection_id, metadata_list, paged):
-        # http://brasiliana.local/wp-json/tainacan/v2/collection/5/items?perpage=96&paged=1&order=DESC&orderby=date&fetch_only_meta=8,30,32,33,36,37
-        url = f"https://brasiliana.museus.gov.br/wp-json/tainacan/v2/collection/{collection_id}/items"
-        logging.info("url-----")
-        logging.info(url)
+        url = f"{self.conn.host}/wp-json/tainacan/v2/collection/{collection_id}/items"
 
-        print(self.conn.host)
         headers = {"cache-control": "no-cache"}
-
+        fetch_only_meta = ",".join([str(meta) for meta in metadata_list])
+        print((url, fetch_only_meta, paged))
         r = requests.get(url, params=[
-            ('perpage', 1),
+            ('perpage', 96),
             ('paged', paged),
             ('order', 'DESC'),
             ('orderby', 'date'),
-            ('fetch_only', 'status'),
-            ('fetch_only_meta', "35,37,36"),
+            ('fetch_only', 'status,document'),
+            ('fetch_only_meta', fetch_only_meta),
         ], headers=headers,
         )
 
         if int(r.status_code) == 200:
-            print("good")
             return json.loads(r.text)
-        # session = self.get_conn(headers={})
-        # print(session)
-
-        # r = requests.post(self.teams_url, json=teams_message, headers=headers)
-        # r = requests.get(self.teams_url, json=teams_message, headers=headers)
-
-        # prep = session.prepare_request(request)
-        # data = self.run_and_check(session, prep, {})
-        # return data
+        return False
 
     def create_item(self):
         return
 
-    def update_metadata_item(self):
-        return
+    def update_metadata_item(self, item_id, meta_id, meta_value):
+        url = f"{self.conn.host}/wp-json/tainacan/v2/item/{item_id}/metadata/{meta_id}"
+        data = {"values": [meta_value]}
+        response = requests.patch(url, json=data, headers=self.headers)
+        return response.status_code == 200
 
     def update_document_item(self):
         return
+
+    def upsert_item(self, item_id, data):
+        for meta_id, meta_value in data.items():
+            self.update_metadata_item(item_id, meta_id, meta_value)
+
+    def remove_item(self, item_id, permanent=False):
+        url = f"{self.conn.host}/wp-json/tainacan/v2/items/{item_id}?permanently=0" if permanent == False else f"{self.conn.host}/wp-json/tainacan/v2/items/{item_id}?permanently=1"
+        response = requests.delete(url, headers=self.headers)
+        if response.status_code == 200:
+            return True
+        else:
+            return False

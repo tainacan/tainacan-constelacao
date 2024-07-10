@@ -2,8 +2,10 @@
 import os
 import yaml
 import logging
+import requests
 
 from airflow import DAG
+from airflow.models import Variable
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.utils.dates import days_ago
 from airflow.operators.python_operator import PythonOperator
@@ -26,82 +28,95 @@ default_args = {
 }
 
 
-def mark_all_items_to_delete(collection_name):
-    logging.info(f"mark_all_items_to_delete [{collection_name}]")
-    hook = MongoHook(conn_id='mongo_cache_db')
-    filter_query = {}  # Filtro vazio para atualizar todos os documentos
-    update_query = {'$set': {'deleted': True}}  # Query de atualização
-    hook.update_many(
-        mongo_collection=collection_name,
-        filter_doc=filter_query,
-        update_doc=update_query,
-        mongo_db='agregation_cache_db'
-    )
+# def mark_all_items_to_delete(collection_name):
+#     logging.info(f"mark_all_items_to_delete [{collection_name}]")
+#     hook = MongoHook(conn_id='mongo_cache_db')
+#     filter_query = {}  # Filtro vazio para atualizar todos os documentos
+#     update_query = {'$set': {'deleted': True}}  # Query de atualização
+#     hook.update_many(
+#         mongo_collection=collection_name,
+#         filter_doc=filter_query,
+#         update_doc=update_query,
+#         mongo_db='agregation_cache_db'
+#     )
+
+def create_dag(name, config_file, inputs):
+    # Defining the DAG using Context Manager
+    with DAG(
+        f'''tainacan-agregador-{name}''',
+        default_args=default_args,
+        schedule_interval=None,
+    ) as dag:
+        if(config_file != None):
+            response_config_file = requests.get(config_file)
+            if response_config_file.status_code == 200:
+                pipe_config_yml_file = response_config_file.content
+                aggregation_pipe_config = yaml.safe_load(pipe_config_yml_file)
+                init = DummyOperator(
+                    task_id='inicio',
+                )
+
+                mongo_conn_id = f'''{name}_mongo_cache_db'''
+                crate_local_cache = LoadAgregationItemsDataOperator(
+                    task_id='load_agregation_items_data',
+                    aggregation_pipe_config=aggregation_pipe_config,
+                    mongo_conn_id=mongo_conn_id
+                )
+
+                start = init >> crate_local_cache
+
+                insert_data_on_agregation = TainacanDestinationOperator(
+                    task_id='insert_data_on_agregation',
+                    config=aggregation_pipe_config,
+                    mongo_conn_id=mongo_conn_id
+                )
+
+                # init >> insert_data_on_agregation
+                # return
+
+                all_ids_source = []
+                for source_file in inputs:
+                    response_inputs = requests.get(source_file)
+                    if response_inputs.status_code == 200:
+                        inputs_yml_file = response_inputs.content
+                        source_config = yaml.safe_load(inputs_yml_file)
+
+                        if 'idsource' not in source_config:
+                            continue
+                        id_source = source_config['idsource']
+                        all_ids_source.append(id_source)
+
+                        get_items = TainacanSourceOperator(
+                            task_id=f"{id_source}.get_items",
+                            source_config=source_config,
+                            mongo_conn_id=mongo_conn_id
+                        )
+
+                        aggregation_transform_pipe = AggregationTransformPipeOperator(
+                            task_id=f"{id_source}.aggregation_transform_pipe",
+                            id_source=id_source,
+                            aggregation_pipe_config=aggregation_pipe_config,
+                            mongo_conn_id=mongo_conn_id
+                        )
+
+                        start >> get_items >> aggregation_transform_pipe >> insert_data_on_agregation
+
+                insert_data_on_agregation
+
+url_setup = Variable.get("url_setup")
+response = requests.get(url_setup)
+if response.status_code == 200:
+    yaml_content = yaml.safe_load(response.content)
+    for config in yaml_content.get('configs', []):
+        name = config.get('name')
+        config_file_url = config.get('file')
+        inputs = config.get('inputs', [])
+        create_dag(
+            name,
+            config_file_url,
+            inputs
+        )
+else:
+    print(f"Falha ao fazer o download do arquivo. Status code: {response.status_code}")
 
 
-# Defining the DAG using Context Manager
-with DAG(
-    'taiancan-agregador',
-    default_args=default_args,
-    schedule_interval=None,
-) as dag:
-
-    with open('/opt/airflow/dags/tainacan_aggregator_pipeline/aggregator_dags/inputs/config.yml', 'r') as file:
-        aggregation_pipe_config_yml_file = file.read()
-    aggregation_pipe_config = yaml.safe_load(aggregation_pipe_config_yml_file)
-
-    init = DummyOperator(
-        task_id='inicio',
-    )
-
-    crate_local_cache = LoadAgregationItemsDataOperator(
-        task_id='load_agregation_items_data',
-        aggregation_pipe_config=aggregation_pipe_config
-    )
-
-    # force_delete = DummyOperator(
-    #     task_id='force_delete'
-    # )
-
-    start = init >> crate_local_cache
-
-    # insert_data_on_agregation = TainacanDestinationOperator(
-    #     task_id='insert_data_on_agregation',
-    # )
-
-    # sources_path = '/opt/airflow/dags/tainacan_aggregator_pipeline/aggregator_dags/inputs/sources.d'
-    # source_files = os.listdir(sources_path)
-    # all_ids_source = []
-
-    # for source_file in source_files:
-    #     full_path = os.path.join(sources_path, source_file)
-    #     with open(full_path, 'r') as yml_file:
-    #         source_config = yaml.safe_load(yml_file)
-
-    #         if 'idsource' not in source_config:
-    #             continue
-    #         id_source = source_config['idsource']
-    #         all_ids_source.append(id_source)
-
-    #         mark_to_delete = PythonOperator(
-    #             task_id=f"{id_source}.mark_all_items_to_delete",
-    #             python_callable=mark_all_items_to_delete,
-    #             # provide_context=True,
-    #             op_kwargs={'collection_name': id_source},
-    #             dag=dag,
-    #         )
-
-    #         get_items = TainacanSourceOperator(
-    #             task_id=f"{id_source}.get_items",
-    #             source_config=source_config
-    #         )
-
-    #         aggregation_transform_pipe = AggregationTransformPipeOperator(
-    #             task_id=f"{id_source}.aggregation_transform_pipe",
-    #             id_source=id_source,
-    #             aggregation_pipe_config=aggregation_pipe_config
-    #         )
-
-    #         # start >> mark_to_delete >> get_items >> aggregation_transform_pipe >> insert_data_on_agregation
-
-    # insert_data_on_agregation >> force_delete

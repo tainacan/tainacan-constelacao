@@ -53,7 +53,7 @@ class TainacanGetItemsHook(HttpHook):
             self.log.info(f"next_token: {next_token}")
             self.page_process_callback(data)
             count += 1
-            if next_token == False or data == False or count >= 200:
+            if next_token == False or data == False:
                 break
 
     def run(self):
